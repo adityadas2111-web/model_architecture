@@ -22,6 +22,47 @@ python -m pip install -r requirements.txt
 python demo.py
 ```
 
+## Analyze a Hugging Face model
+
+Pass either a model ID from the Hugging Face Hub or a downloaded local model
+directory:
+
+```bash
+python huggingface_analyzer.py distilbert-base-uncased
+```
+
+Use representative text and optionally save a machine-readable report:
+
+```bash
+python huggingface_analyzer.py distilbert-base-uncased \
+  --text "FX graphs make model structure inspectable." \
+  --json report.json
+```
+
+To analyze a downloaded model without network access:
+
+```bash
+python huggingface_analyzer.py ./my_downloaded_model --local-files-only
+```
+
+The command uses `AutoTokenizer` and `AutoModel`, runs one representative
+inference through `torch.compile`, and analyzes the captured FX graph. Remote
+model code is disabled by default. Only add `--trust-remote-code` for a model
+repository whose code you have reviewed and trust.
+
+The current automatic loader targets text models. Image, audio, multimodal, or
+custom models can still use `analyze_model` directly by supplying their real
+example tensors through `example_args` or `example_kwargs`.
+
+The same functionality is importable from Python:
+
+```python
+from huggingface_analyzer import analyze_huggingface_model
+
+report = analyze_huggingface_model("distilbert-base-uncased")
+print(report)
+```
+
 ## Use it with any PyTorch model
 
 For models that can be symbolically traced:
