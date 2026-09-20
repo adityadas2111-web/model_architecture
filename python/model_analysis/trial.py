@@ -28,4 +28,4 @@ print("\nActivation Functions:")
 for name, count in activation_counts.items():
     print(f"{name}: {count}")
 
-print("\nTotal:", sum(activation_counts.values()))
+print("\nTotal:", sum(activation_counts.values())) #compile graph of the model and then from fx graph try to trace,input and output of each function number of layers metadata it consume the trial and a model should be give to script as input  
