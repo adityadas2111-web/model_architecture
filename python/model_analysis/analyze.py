@@ -3,10 +3,7 @@ from typing import Any, Mapping, Sequence
 
 from torch import fx, nn
 
-from activations import (
-    ACTIVATION_MODULES,
-    identify_activation,
-)
+from activations import ACTIVATION_MODULES, identify_activation
 from fx_graph import (
     capture_compiled_graphs,
     get_target_name,
@@ -21,8 +18,6 @@ def analyze_graphs(
     graphs: list[fx.GraphModule],
     graph_source: str,
 ) -> ModelReport:
-   
-
     layer_types: Counter[str] = Counter()
     function_types: Counter[str] = Counter()
     activation_counts: Counter[str] = Counter()
@@ -33,12 +28,13 @@ def analyze_graphs(
     linear_operations = 0
 
     for graph_module in graphs:
-        modules = dict(graph_module.named_modules())
+        modules = None
 
         for node in graph_module.graph.nodes:
-
-        
             if node.op == "call_module":
+                if modules is None:
+                    modules = dict(graph_module.named_modules())
+
                 module_layers += 1
 
                 module = modules[str(node.target)]
@@ -52,70 +48,49 @@ def analyze_graphs(
                 if isinstance(module, ACTIVATION_MODULES):
                     activation_counts[module_name] += 1
 
-           
-            elif node.op == "call_function":
-                function_calls += 1
+            elif node.op in ("call_function", "call_method"):
+                if node.op == "call_function":
+                    function_calls += 1
+                    operation_name = get_target_name(node.target)
+                else:
+                    method_calls += 1
+                    operation_name = str(node.target)
 
-                function_name = get_target_name(node.target)
+                function_types[operation_name] += 1
 
-                function_types[function_name] += 1
-
-                activation = identify_activation(function_name)
+                activation = identify_activation(operation_name)
 
                 if activation is not None:
                     activation_counts[activation] += 1
 
-                if is_linear_operation(function_name):
+                if (
+                    node.op == "call_function"
+                    and is_linear_operation(operation_name)
+                ):
                     linear_operations += 1
 
-           
-            elif node.op == "call_method":
-                method_calls += 1
+    total_parameters = 0
+    trainable_parameters = 0
 
-                method_name = str(node.target)
+    for parameter in model.parameters():
+        parameter_count = parameter.numel()
+        total_parameters += parameter_count
 
-                function_types[method_name] += 1
-
-                activation = identify_activation(method_name)
-
-                if activation is not None:
-                    activation_counts[activation] += 1
-
-    total_operations = (
-        module_layers
-        + function_calls
-        + method_calls
-    )
-
-    total_parameters = sum(
-        parameter.numel()
-        for parameter in model.parameters()
-    )
-
-    trainable_parameters = sum(
-        parameter.numel()
-        for parameter in model.parameters()
-        if parameter.requires_grad
-    )
+        if parameter.requires_grad:
+            trainable_parameters += parameter_count
 
     return ModelReport(
         model_name=type(model).__name__,
         graph_source=graph_source,
         graph_count=len(graphs),
-        total_operations=total_operations,
+        total_operations=module_layers + function_calls + method_calls,
         module_layers=module_layers,
         function_calls=function_calls,
         method_calls=method_calls,
         linear_operations=linear_operations,
-        activation_functions=dict(
-            sorted(activation_counts.items())
-        ),
-        layer_types=dict(
-            sorted(layer_types.items())
-        ),
-        function_types=dict(
-            sorted(function_types.items())
-        ),
+        activation_functions=dict(sorted(activation_counts.items())),
+        layer_types=dict(sorted(layer_types.items())),
+        function_types=dict(sorted(function_types.items())),
         total_parameters=total_parameters,
         trainable_parameters=trainable_parameters,
     )
@@ -129,8 +104,6 @@ def analyze_model(
     use_compile: bool = False,
     fullgraph: bool = False,
 ) -> ModelReport:
-
-
     if not isinstance(model, nn.Module):
         raise TypeError(
             "model must be an instance of torch.nn.Module"
@@ -152,10 +125,8 @@ def analyze_model(
         )
 
         graph_source = "torch.compile FX capture"
-
     else:
         graphs = symbolic_trace_model(model)
-
         graph_source = "torch.fx.symbolic_trace"
 
     return analyze_graphs(

@@ -50,38 +50,21 @@ ACTIVATION_FUNCTIONS.update(
     {
         "leaky_relu": "LeakyReLU",
         "log_softmax": "LogSoftmax",
-        "relu6": "ReLU6",
-        "hardshrink": "Hardshrink",
-        "hardsigmoid": "Hardsigmoid",
-        "hardswish": "Hardswish",
-        "hardtanh": "Hardtanh",
-        "logsigmoid": "LogSigmoid",
-        "softmax": "Softmax",
-        "softmin": "Softmin",
-        "softplus": "Softplus",
-        "softshrink": "Softshrink",
-        "tanhshrink": "Tanhshrink",
     }
 )
 
 
 def identify_activation(name: str) -> str | None:
-    normalized = name.lower()
-
-    normalized = normalized.replace(
-        "torch.nn.functional.",
-        "",
+    normalized = (
+        name.lower()
+        .replace("torch.nn.functional.", "")
+        .replace("torch.", "")
     )
 
-    normalized = normalized.replace(
-        "torch.",
-        "",
-    )
+    for part in reversed(normalized.split(".")):
+        activation = ACTIVATION_FUNCTIONS.get(part)
 
-    parts = normalized.split(".")
+        if activation is not None:
+            return activation
 
-    for part in reversed(parts):
-        if part in ACTIVATION_FUNCTIONS:
-            return ACTIVATION_FUNCTIONS[part]
-
-    return ACTIVATION_FUNCTIONS.get(normalized)
+    return None

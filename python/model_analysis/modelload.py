@@ -33,11 +33,14 @@ def load_huggingface_model(
 ):
     try:
         from transformers import AutoModel, AutoTokenizer
+        from transformers.utils import logging as transformers_logging
 
     except ImportError as error:
         raise RuntimeError(
             "Run: python -m pip install torch transformers safetensors"
         ) from error
+
+    transformers_logging.set_verbosity_error()
 
     load_options: dict[str, Any] = {
         "trust_remote_code": trust_remote_code,
