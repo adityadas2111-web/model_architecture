@@ -48,7 +48,7 @@ def capture_compiled_graphs(
 
     if not captured_graphs:
         raise RuntimeError(
-            "torch.compile did not produce an FX graph."
+            "Compiled graph capture did not produce an FX graph."
         )
 
     return captured_graphs
@@ -61,8 +61,8 @@ def symbolic_trace_model(
         graph_module = fx.symbolic_trace(model)
     except Exception as error:
         raise RuntimeError(
-            "FX symbolic tracing failed. Try providing example "
-            "inputs and using compiled graph capture."
+            "FX symbolic tracing failed. "
+            "Try providing example inputs and using compiled graph capture."
         ) from error
 
     return [graph_module]
